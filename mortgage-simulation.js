@@ -284,19 +284,21 @@ function simulateArmRates(initialRate, margin, initialCap, annualCap, lifetimeCa
             // Calculate new ARM rate (index + margin)
             let newArmRate = currentIndexRate + margin;
             
-            // Apply caps
+            // Apply caps (and also allow for decreases)
             if (year === 0) {
                 // First adjustment after fixed period - apply initial adjustment cap
                 const maxIncrease = initialCap;
                 if (newArmRate > lastArmRate + maxIncrease) {
                     newArmRate = lastArmRate + maxIncrease;
                 }
+                // No floor on decrease for first adjustment (other than the 0.5% absolute floor)
             } else {
                 // Subsequent adjustments - apply periodic adjustment cap
                 const maxIncrease = annualCap;
                 if (newArmRate > lastArmRate + maxIncrease) {
                     newArmRate = lastArmRate + maxIncrease;
                 }
+                // No floor on decrease for subsequent adjustments (other than the 0.5% absolute floor)
             }
             
             // Apply lifetime cap
@@ -304,6 +306,9 @@ function simulateArmRates(initialRate, margin, initialCap, annualCap, lifetimeCa
             if (newArmRate > lifetimeMax) {
                 newArmRate = lifetimeMax;
             }
+            
+            // Ensure rate doesn't go below 0.5% absolute floor
+            newArmRate = Math.max(newArmRate, 0.5);
             
             annualRates.push(newArmRate);
             lastArmRate = newArmRate;
@@ -597,15 +602,44 @@ function updateCharts(fixedCost, armCosts, armRatePaths, fixedRate, armInitialRa
         });
     }
     
-    // Calculate median path
-    const medianPath = [];
+    // Calculate statistics for rate paths
     if (armRatePaths.length > 0) {
+        // Create arrays for each year's statistics
+        const medianPath = [];
+        const lowerPath = []; // 5th percentile
+        const upperPath = []; // 95th percentile
+        const minPath = [];
+        const maxPath = [];
+        
         for (let year = 0; year < loanTerm; year++) {
             const ratesForYear = armRatePaths.map(path => path[year] || 0);
             ratesForYear.sort((a, b) => a - b);
-            medianPath.push(ratesForYear[Math.floor(ratesForYear.length / 2)]);
+            
+            // Calculate statistics for this year
+            minPath.push(ratesForYear[0]);
+            maxPath.push(ratesForYear[ratesForYear.length - 1]);
+            
+            const lowerIdx = Math.floor(ratesForYear.length * 0.05);
+            const medianIdx = Math.floor(ratesForYear.length * 0.5);
+            const upperIdx = Math.floor(ratesForYear.length * 0.95);
+            
+            lowerPath.push(ratesForYear[lowerIdx]);
+            medianPath.push(ratesForYear[medianIdx]);
+            upperPath.push(ratesForYear[upperIdx]);
         }
         
+        // Add 95% confidence interval band
+        datasets.push({
+            label: '95% Confidence Interval',
+            data: upperPath,
+            borderColor: 'rgba(75, 192, 192, 0.3)',
+            backgroundColor: 'rgba(75, 192, 192, 0.1)',
+            borderWidth: 1,
+            pointRadius: 0,
+            fill: '+1'
+        });
+        
+        // Add median path
         datasets.push({
             label: 'Median ARM Rate',
             data: medianPath,
@@ -613,6 +647,17 @@ function updateCharts(fixedCost, armCosts, armRatePaths, fixedRate, armInitialRa
             backgroundColor: 'transparent',
             borderWidth: 2,
             pointRadius: 1
+        });
+        
+        // Add lower bound of confidence interval
+        datasets.push({
+            label: 'Lower 5%',
+            data: lowerPath,
+            borderColor: 'rgba(75, 192, 192, 0.3)',
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            pointRadius: 0,
+            fill: false
         });
     }
     
