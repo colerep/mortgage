@@ -269,13 +269,13 @@ function simulateArmRates(initialRate, margin, initialCap, annualCap, lifetimeCa
     // Calculate long-term average for mean reversion
     // Use more recent data (last 20 years) to better reflect modern monetary policy
     const recentRateLevels = historicalTreasuryRates
-        .filter(data => data.date >= new Date('2002-01-01'))
+        .filter(data => data.date >= new Date('1965-01-01'))
         .map(data => data.rate);
     const longTermAverage = recentRateLevels.reduce((sum, rate) => sum + rate, 0) / recentRateLevels.length;
     
     // Mean reversion strength (between 0 and 1)
     // Higher values mean stronger reversion to the long-term average
-    const meanReversionStrength = 0.3;
+    const meanReversionStrength = 0;
     
     // Get current index rate (most recent historical value)
     let currentIndexRate = getLatestRate();
