@@ -717,37 +717,80 @@ function updateCharts(fixedCost, armCosts, armRatePaths, fixedRate, armInitialRa
             upperPath.push(ratesForYear[upperIdx]);
         }
         
-        // Add 95% confidence interval band
-        datasets.push({
-            label: '95% Confidence Interval',
-            data: upperPath,
-            borderColor: 'rgba(75, 192, 192, 0.3)',
-            backgroundColor: 'rgba(75, 192, 192, 0.1)',
-            borderWidth: 1,
-            pointRadius: 0,
-            fill: '+1'
-        });
-        
-        // Add median path
-        datasets.push({
-            label: 'Median ARM Rate',
-            data: medianPath,
-            borderColor: 'rgba(75, 192, 192, 1)',
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            pointRadius: 1
-        });
-        
-        // Add lower bound of confidence interval
-        datasets.push({
-            label: 'Lower 5%',
-            data: lowerPath,
-            borderColor: 'rgba(75, 192, 192, 0.3)',
-            backgroundColor: 'transparent',
-            borderWidth: 1,
-            pointRadius: 0,
-            fill: false
-        });
+
+        // First add the lower bound
+    datasets.push({
+        label: 'Low Rate Scenario (5%)',
+        data: lowerPath,
+        borderColor: 'rgba(75, 192, 192, 0.3)',
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false
+    });
+
+    // Then add the upper bound with fill between the two
+    datasets.push({
+        label: 'High Rate Scenario (95%)',
+        data: upperPath,
+        borderColor: 'rgba(75, 192, 192, 0.3)',
+        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: '-1'  // Fill down to the previous dataset (lower bound)
+    });
+
+    // Add median path last
+    datasets.push({
+        label: 'Median ARM Rate',
+        data: medianPath,
+        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 1
+    });
+
+    // Then add the fixed rate reference line
+    datasets.push({
+        label: 'Fixed Mortgage Rate',
+        data: Array(loanTerm).fill(fixedRate),
+        borderColor: 'rgba(255, 99, 132, 1)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderDash: [5, 5],
+        pointRadius: 0
+    });
+    // Add 95% confidence interval band
+    datasets.push({
+        label: '95% Confidence Interval',
+        data: upperPath,
+        borderColor: 'rgba(75, 192, 192, 0.3)',
+        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: '+1'
+    });
+    
+    // Add median path
+    datasets.push({
+        label: 'Median ARM Rate',
+        data: medianPath,
+        borderColor: 'rgba(75, 192, 192, 1)',
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        pointRadius: 1
+    });
+    
+    // Add lower bound of confidence interval
+    datasets.push({
+        label: 'Lower 5%',
+        data: lowerPath,
+        borderColor: 'rgba(75, 192, 192, 0.3)',
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        pointRadius: 0,
+        fill: false
+    });
     }
     
     // Add fixed rate reference line
