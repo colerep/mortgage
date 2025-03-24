@@ -258,24 +258,16 @@ function calculateFixedCost(principal, annualRate, years) {
  * Simulate future ARM rates with mean reversion and level-based sampling
  * This replaces the original simulateArmRates function in the mortgage-simulation.js file
  */
+/**
+ * Simulate future ARM rates using level-based sampling
+ * This function samples directly from historical rate levels instead of rate changes
+ */
 function simulateArmRates(initialRate, margin, initialCap, annualCap, lifetimeCap, years) {
     // First 5 years are at the fixed initial rate
     const annualRates = Array(5).fill(initialRate);
     
-    // Create a level-based distribution of historical rates
-    // We'll use the monthlyTreasuryRates array from historical-data.js
-    const historicalRateLevels = monthlyTreasuryRates.map(data => data.rate);
-    
-    // Calculate long-term average for mean reversion
-    // Use more recent data (last 20 years) to better reflect modern monetary policy
-    const recentRateLevels = historicalTreasuryRates
-        .filter(data => data.date >= new Date('1965-01-01'))
-        .map(data => data.rate);
-    const longTermAverage = recentRateLevels.reduce((sum, rate) => sum + rate, 0) / recentRateLevels.length;
-    
-    // Mean reversion strength (between 0 and 1)
-    // Higher values mean stronger reversion to the long-term average
-    const meanReversionStrength = 0;
+    // Extract historical 1-year Treasury rates
+    const historicalRateLevels = historicalTreasuryRates.map(data => data.rate);
     
     // Get current index rate (most recent historical value)
     let currentIndexRate = getLatestRate();
@@ -287,16 +279,13 @@ function simulateArmRates(initialRate, margin, initialCap, annualCap, lifetimeCa
     let lastArmRate = initialRate;
     
     for (let year = 0; year < numRemainingYears; year++) {
-        // Apply mean reversion - pull current rate toward long-term average
-        const reversionEffect = (longTermAverage - currentIndexRate) * meanReversionStrength;
-        
         // Sample a random rate level from historical data
         const randomIndex = Math.floor(Math.random() * historicalRateLevels.length);
         const sampledRateLevel = historicalRateLevels[randomIndex];
         
-        // Blend the sampled rate, current rate, and mean reversion effect
-        // This makes the simulation more realistic with some persistence and mean reversion
-        currentIndexRate = currentIndexRate * 0.4 + sampledRateLevel * 0.4 + reversionEffect;
+        // Blend the sampled rate with the current rate for some smoothness
+        // Use 70% current rate, 30% sampled rate to avoid extreme jumps
+        currentIndexRate = currentIndexRate * 0. + sampledRateLevel * 1;
         
         // Apply a floor for index rate
         currentIndexRate = Math.max(0.5, currentIndexRate);
@@ -344,6 +333,47 @@ function simulateArmRates(initialRate, margin, initialCap, annualCap, lifetimeCa
     }
     
     return [monthlyRates, annualRates];
+}
+
+/**
+ * Helper function to test and visualize the distribution of rate paths
+ * You can call this function to see how the rates are distributed over time
+ */
+function testRateDistribution(initialRate, margin, initialCap, annualCap, lifetimeCap, years, numPaths) {
+    const paths = [];
+    
+    for (let i = 0; i < numPaths; i++) {
+        const [_, annualRates] = simulateArmRates(initialRate, margin, initialCap, annualCap, lifetimeCap, years);
+        paths.push(annualRates);
+    }
+    
+    // Calculate statistics for each year
+    const stats = [];
+    
+    for (let year = 0; year < years; year++) {
+        const ratesForYear = paths.map(path => path[year] || 0);
+        ratesForYear.sort((a, b) => a - b);
+        
+        const avg = ratesForYear.reduce((sum, rate) => sum + rate, 0) / ratesForYear.length;
+        const median = ratesForYear[Math.floor(ratesForYear.length / 2)];
+        const min = ratesForYear[0];
+        const max = ratesForYear[ratesForYear.length - 1];
+        const p25 = ratesForYear[Math.floor(ratesForYear.length * 0.25)];
+        const p75 = ratesForYear[Math.floor(ratesForYear.length * 0.75)];
+        
+        stats.push({
+            year: year + 1,
+            avg,
+            median,
+            min,
+            max,
+            p25,
+            p75
+        });
+    }
+    
+    console.log("Year-by-year statistics:", stats);
+    return stats;
 }
 
 /**
