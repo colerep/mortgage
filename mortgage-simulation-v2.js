@@ -154,7 +154,6 @@ ratePathsChart = new Chart(ratePathsCtx, {
 /**
  * Handle chart responsiveness based on screen size
  */
-// Also modify the handleChartResponsiveness function for better display on mobile:
 function handleChartResponsiveness() {
     const isMobile = window.innerWidth < 768;
     
@@ -169,7 +168,9 @@ function handleChartResponsiveness() {
                 boxWidth: 8,
                 font: {
                     size: 10
-                }
+                },
+                // Remove filter that was causing strikethrough
+                filter: null
             };
             
             // Adjust chart height
@@ -791,20 +792,20 @@ yearLabels.push(`Y${i}`);
 // Add sample rate paths
 const datasets = [];
 
-// Limit number of sample paths to reduce clutter
-const maxSamplePaths = window.innerWidth < 768 ? 0 : 5; // Set to 0 on mobile to not add any sample paths
+    // Limit number of sample paths to reduce clutter
+    const maxSamplePaths = window.innerWidth < 768 ? 3 : 5; // Changed from 0 to 3 on mobile
 
-// Add sample paths (only on desktop)
-for (let i = 0; i < Math.min(maxSamplePaths, armRatePaths.length); i++) {
-    datasets.push({
-        label: `Sample Path ${i + 1}`,
-        data: armRatePaths[i],
-        borderColor: `rgba(54, 162, 235, ${0.3 + (i * 0.1)})`,
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        pointRadius: 0
-    });
-}
+    // Add sample paths (now on both mobile and desktop)
+    for (let i = 0; i < Math.min(maxSamplePaths, armRatePaths.length); i++) {
+        datasets.push({
+            label: `Sample Path ${i + 1}`,
+            data: armRatePaths[i],
+            borderColor: `rgba(54, 162, 235, ${0.3 + (i * 0.1)})`,
+            backgroundColor: 'transparent',
+            borderWidth: 1,
+            pointRadius: 0
+        });
+    }
 
 // Calculate statistics for rate paths
 if (armRatePaths.length > 0) {
