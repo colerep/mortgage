@@ -86,55 +86,65 @@ function initializeCharts() {
         }
     });
     
-    // Rate paths chart - Modified for mobile
-    const ratePathsCtx = document.getElementById('ratePathsChart').getContext('2d');
-    ratePathsChart = new Chart(ratePathsCtx, {
-        type: 'line',
-        data: {
-            labels: [],
-            datasets: []
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'ARM Interest Rate Projections',
-                    font: {
-                        size: 16
+// Replace the ratePathsChart initialization in initializeCharts() with this improved version:
+
+// Rate paths chart - Modified for mobile with better legend handling
+const ratePathsCtx = document.getElementById('ratePathsChart').getContext('2d');
+ratePathsChart = new Chart(ratePathsCtx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: []
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            title: {
+                display: true,
+                text: 'ARM Interest Rate Projections',
+                font: {
+                    size: 16
+                }
+            },
+            legend: {
+                position: 'top',
+                align: 'start',
+                labels: {
+                    boxWidth: 12,
+                    padding: 10,
+                    filter: function(legendItem, chartData) {
+                        // On mobile, only show important datasets in the legend
+                        if (window.innerWidth < 768) {
+                            const keyDatasets = ['Median ARM Rate', 'Fixed Rate', '95% Confidence Interval'];
+                            return keyDatasets.includes(legendItem.text);
+                        }
+                        return true;
                     }
                 },
-                legend: {
-                    position: 'top',
-                    align: 'start',
-                    labels: {
-                        boxWidth: 12,
-                        padding: 10
-                    },
-                    // Make legend more mobile-friendly
-                    maxHeight: 100,
-                    maxWidth: 400
-                }
-            },
-            // Add media query handling for mobile screens
-            layout: {
-                padding: {
-                    top: 10
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        maxRotation: 45,
-                        minRotation: 45,
-                        autoSkip: true,
-                        maxTicksLimit: 10
-                    }
+                // Make legend more mobile-friendly
+                maxHeight: 100,
+                maxWidth: 400
+            }
+        },
+        // Add media query handling for mobile screens
+        layout: {
+            padding: {
+                top: 10
+            }
+        },
+        scales: {
+            x: {
+                ticks: {
+                    maxRotation: 45,
+                    minRotation: 45,
+                    autoSkip: true,
+                    maxTicksLimit: 10
                 }
             }
         }
-    });
+    }
+});
     
     // Add responsive behavior for mobile
     handleChartResponsiveness();
@@ -144,6 +154,7 @@ function initializeCharts() {
 /**
  * Handle chart responsiveness based on screen size
  */
+// Also modify the handleChartResponsiveness function for better display on mobile:
 function handleChartResponsiveness() {
     const isMobile = window.innerWidth < 768;
     
@@ -151,20 +162,32 @@ function handleChartResponsiveness() {
         // Adjust legend position based on screen size
         ratePathsChart.options.plugins.legend.position = isMobile ? 'bottom' : 'top';
         
-        // On mobile, simplify the datasets by hiding some paths
-        if (isMobile && ratePathsChart.data.datasets.length > 0) {
-            // Keep only essential datasets on mobile: median, fixed rate, and bounds
-            const essentialLabels = ['Median ARM Rate', 'Fixed Rate', '95% Confidence Interval'];
+        // Configure legend display on mobile
+        if (isMobile) {
+            // Set smaller font size and box width for the legend on mobile
+            ratePathsChart.options.plugins.legend.labels = {
+                boxWidth: 8,
+                font: {
+                    size: 10
+                }
+            };
             
-            ratePathsChart.data.datasets.forEach(dataset => {
-                dataset.hidden = !essentialLabels.includes(dataset.label);
-            });
-            
-            // Adjust chart height on mobile
+            // Adjust chart height
             const chartContainer = document.getElementById('ratePathsChart').parentNode;
             if (chartContainer) {
                 chartContainer.style.height = '300px';
             }
+            
+            // Optional: Add this CSS dynamically for better mobile display
+            const style = document.createElement('style');
+            style.textContent = `
+                @media (max-width: 768px) {
+                    #ratePathsChart {
+                        margin-bottom: 60px;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
         }
         
         ratePathsChart.update();
@@ -769,20 +792,18 @@ yearLabels.push(`Y${i}`);
 const datasets = [];
 
 // Limit number of sample paths to reduce clutter
-const maxSamplePaths = window.innerWidth < 768 ? 2 : 5;
+const maxSamplePaths = window.innerWidth < 768 ? 0 : 5; // Set to 0 on mobile to not add any sample paths
 
-// Add sample paths (fewer on mobile)
+// Add sample paths (only on desktop)
 for (let i = 0; i < Math.min(maxSamplePaths, armRatePaths.length); i++) {
-datasets.push({
-label: `Sample Path ${i + 1}`,
-data: armRatePaths[i],
-borderColor: `rgba(54, 162, 235, ${0.3 + (i * 0.1)})`,
-backgroundColor: 'transparent',
-borderWidth: 1,
-pointRadius: 0,
-// Hide sample paths by default on mobile
-hidden: window.innerWidth < 768
-});
+    datasets.push({
+        label: `Sample Path ${i + 1}`,
+        data: armRatePaths[i],
+        borderColor: `rgba(54, 162, 235, ${0.3 + (i * 0.1)})`,
+        backgroundColor: 'transparent',
+        borderWidth: 1,
+        pointRadius: 0
+    });
 }
 
 // Calculate statistics for rate paths
