@@ -29,6 +29,10 @@ document.addEventListener('DOMContentLoaded', function() {
 /**
  * Initialize the chart containers with empty data
  */
+/**
+ * Initialize the chart containers with empty data
+ * Modified to be more mobile-friendly
+ */
 function initializeCharts() {
     // Distribution chart
     const distributionCtx = document.getElementById('distributionChart').getContext('2d');
@@ -82,7 +86,7 @@ function initializeCharts() {
         }
     });
     
-    // Rate paths chart
+    // Rate paths chart - Modified for mobile
     const ratePathsCtx = document.getElementById('ratePathsChart').getContext('2d');
     ratePathsChart = new Chart(ratePathsCtx, {
         type: 'line',
@@ -102,12 +106,91 @@ function initializeCharts() {
                     }
                 },
                 legend: {
-                    position: 'top'
+                    position: 'top',
+                    align: 'start',
+                    labels: {
+                        boxWidth: 12,
+                        padding: 10
+                    },
+                    // Make legend more mobile-friendly
+                    maxHeight: 100,
+                    maxWidth: 400
+                }
+            },
+            // Add media query handling for mobile screens
+            layout: {
+                padding: {
+                    top: 10
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45,
+                        autoSkip: true,
+                        maxTicksLimit: 10
+                    }
                 }
             }
         }
     });
+    
+    // Add responsive behavior for mobile
+    handleChartResponsiveness();
+    window.addEventListener('resize', handleChartResponsiveness);
 }
+
+/**
+ * Handle chart responsiveness based on screen size
+ */
+function handleChartResponsiveness() {
+    const isMobile = window.innerWidth < 768;
+    
+    if (ratePathsChart) {
+        // Adjust legend position based on screen size
+        ratePathsChart.options.plugins.legend.position = isMobile ? 'bottom' : 'top';
+        
+        // On mobile, simplify the datasets by hiding some paths
+        if (isMobile && ratePathsChart.data.datasets.length > 0) {
+            // Keep only essential datasets on mobile: median, fixed rate, and bounds
+            const essentialLabels = ['Median ARM Rate', 'Fixed Rate', '95% Confidence Interval'];
+            
+            ratePathsChart.data.datasets.forEach(dataset => {
+                dataset.hidden = !essentialLabels.includes(dataset.label);
+            });
+            
+            // Adjust chart height on mobile
+            const chartContainer = document.getElementById('ratePathsChart').parentNode;
+            if (chartContainer) {
+                chartContainer.style.height = '300px';
+            }
+        }
+        
+        ratePathsChart.update();
+    }
+}
+
+
+/**
+ * Add this CSS to your stylesheet to further improve mobile experience
+ */
+/*
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px !important;
+        margin-bottom: 30px;
+    }
+    
+    #ratePathsChart {
+        margin-top: 10px;
+    }
+    
+    .results-card {
+        padding: 10px;
+    }
+}
+*/
 
 /**
  * Start the simulation and show loading overlay
@@ -530,290 +613,263 @@ function finishSimulation(fixedCost, armCosts, armRatePaths, fixedRate, armIniti
 
 /**
  * Update the visualization charts with simulation results
+ * Modified to be more mobile-friendly
+ */
+/**
+ * Update the visualization charts with simulation results
+ * Modified to be more mobile-friendly
  */
 function updateCharts(fixedCost, armCosts, armRatePaths, fixedRate, armInitialRate, loanTerm, 
-                    armMedian, armCiLow, armCiHigh, probArmCheaper) {
-    // Clear previous charts
-    distributionChart.data.labels = [];
-    distributionChart.data.datasets = [];
-    savingsChart.data.labels = [];
-    savingsChart.data.datasets = [];
-    ratePathsChart.data.labels = [];
-    ratePathsChart.data.datasets = [];
-    
-    // 1. Distribution of ARM costs
-    // Create histogram data
-    const min = Math.min(...armCosts);
-    const max = Math.max(...armCosts);
-    const range = max - min;
-    const numBins = 30;
-    const binWidth = range / numBins;
-    
-    const bins = Array(numBins).fill(0);
-    const binLabels = [];
-    
-    for (let i = 0; i < numBins; i++) {
-        const binStart = min + (i * binWidth);
-        const binEnd = binStart + binWidth;
-        binLabels.push(`$${formatMoney(binStart)}`);
-        
-        // Count values in this bin
-        for (const cost of armCosts) {
-            if (cost >= binStart && (cost < binEnd || (i === numBins - 1 && cost <= binEnd))) {
-                bins[i]++;
-            }
-        }
-    }
-    
-    // Update distribution chart
-    distributionChart.data.labels = binLabels;
-    distributionChart.data.datasets = [
-        {
-            label: 'Frequency',
-            data: bins,
-            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1
-        }
-    ];
-    
-    // Add reference lines
-    distributionChart.options.plugins.annotation = {
-        annotations: {
-            fixedRateLine: {
-                type: 'line',
-                yMin: 0,
-                yMax: Math.max(...bins),
-                xMin: findClosestBinIndex(fixedCost, min, binWidth),
-                xMax: findClosestBinIndex(fixedCost, min, binWidth),
-                borderColor: 'rgba(255, 99, 132, 1)',
-                borderWidth: 2,
-                label: {
-                    content: 'Fixed Rate',
-                    enabled: true,
-                    position: 'top'
-                }
-            },
-            medianLine: {
-                type: 'line',
-                yMin: 0,
-                yMax: Math.max(...bins),
-                xMin: findClosestBinIndex(armMedian, min, binWidth),
-                xMax: findClosestBinIndex(armMedian, min, binWidth),
-                borderColor: 'rgba(75, 192, 192, 1)',
-                borderWidth: 2,
-                label: {
-                    content: 'ARM Median',
-                    enabled: true,
-                    position: 'top'
-                }
-            }
-        }
-    };
-    
-    // 2. Savings/Loss with ARM vs Fixed
-    // Calculate savings
-    const savings = armCosts.map(cost => fixedCost - cost);
-    
-    // Create histogram data for savings
-    const savingsMin = Math.min(...savings);
-    const savingsMax = Math.max(...savings);
-    const savingsRange = savingsMax - savingsMin;
-    const savingsBinWidth = savingsRange / numBins;
-    
-    const savingsBins = Array(numBins).fill(0);
-    const savingsBinLabels = [];
-    
-    for (let i = 0; i < numBins; i++) {
-        const binStart = savingsMin + (i * savingsBinWidth);
-        const binEnd = binStart + savingsBinWidth;
-        savingsBinLabels.push(`$${formatMoney(binStart)}`);
-        
-        // Count values in this bin
-        for (const saving of savings) {
-            if (saving >= binStart && (saving < binEnd || (i === numBins - 1 && saving <= binEnd))) {
-                savingsBins[i]++;
-            }
-        }
-    }
-    
-    // Update savings chart
-    savingsChart.data.labels = savingsBinLabels;
-    savingsChart.data.datasets = [
-        {
-            label: 'Frequency',
-            data: savingsBins,
-            backgroundColor: 'rgba(75, 192, 192, 0.5)',
-            borderColor: 'rgba(75, 192, 192, 1)',
-            borderWidth: 1
-        }
-    ];
-    
-    // Add reference line at zero
-    savingsChart.options.plugins.annotation = {
-        annotations: {
-            zeroLine: {
-                type: 'line',
-                yMin: 0,
-                yMax: Math.max(...savingsBins),
-                xMin: findClosestBinIndex(0, savingsMin, savingsBinWidth),
-                xMax: findClosestBinIndex(0, savingsMin, savingsBinWidth),
-                borderColor: 'rgba(255, 99, 132, 1)',
-                borderWidth: 2,
-                label: {
-                    content: 'Break Even',
-                    enabled: true,
-                    position: 'top'
-                }
-            }
-        }
-    };
-    
-    // 3. Sample of ARM rate paths
-    // Create labels for years
-    const yearLabels = [];
-    for (let i = 1; i <= loanTerm; i++) {
-        yearLabels.push(`Year ${i}`);
-    }
-    
-    // Add sample rate paths
-    const datasets = [];
-    
-    // Add sample paths
-    for (let i = 0; i < Math.min(5, armRatePaths.length); i++) {
-        datasets.push({
-            label: `Sample Path ${i + 1}`,
-            data: armRatePaths[i],
-            borderColor: `rgba(54, 162, 235, ${0.3 + (i * 0.1)})`,
-            backgroundColor: 'transparent',
-            borderWidth: 1,
-            pointRadius: 0
-        });
-    }
-    
-    // Calculate statistics for rate paths
-    if (armRatePaths.length > 0) {
-        // Create arrays for each year's statistics
-        const medianPath = [];
-        const lowerPath = []; // 5th percentile
-        const upperPath = []; // 95th percentile
-        const minPath = [];
-        const maxPath = [];
-        
-        for (let year = 0; year < loanTerm; year++) {
-            const ratesForYear = armRatePaths.map(path => path[year] || 0);
-            ratesForYear.sort((a, b) => a - b);
-            
-            // Calculate statistics for this year
-            minPath.push(ratesForYear[0]);
-            maxPath.push(ratesForYear[ratesForYear.length - 1]);
-            
-            const lowerIdx = Math.floor(ratesForYear.length * 0.05);
-            const medianIdx = Math.floor(ratesForYear.length * 0.5);
-            const upperIdx = Math.floor(ratesForYear.length * 0.95);
-            
-            lowerPath.push(ratesForYear[lowerIdx]);
-            medianPath.push(ratesForYear[medianIdx]);
-            upperPath.push(ratesForYear[upperIdx]);
-        }
-        
+    armMedian, armCiLow, armCiHigh, probArmCheaper) {
+// Clear previous charts
+distributionChart.data.labels = [];
+distributionChart.data.datasets = [];
+savingsChart.data.labels = [];
+savingsChart.data.datasets = [];
+ratePathsChart.data.labels = [];
+ratePathsChart.data.datasets = [];
 
-        // First add the lower bound
-    datasets.push({
-        label: 'Low Rate Scenario (5%)',
-        data: lowerPath,
-        borderColor: 'rgba(75, 192, 192, 0.3)',
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        pointRadius: 0,
-        fill: false
-    });
+// 1. Distribution of ARM costs
+// Create histogram data
+const min = Math.min(...armCosts);
+const max = Math.max(...armCosts);
+const range = max - min;
+const numBins = 30;
+const binWidth = range / numBins;
 
-    // Then add the upper bound with fill between the two
-    datasets.push({
-        label: 'High Rate Scenario (95%)',
-        data: upperPath,
-        borderColor: 'rgba(75, 192, 192, 0.3)',
-        backgroundColor: 'rgba(75, 192, 192, 0.1)',
-        borderWidth: 1,
-        pointRadius: 0,
-        fill: '-1'  // Fill down to the previous dataset (lower bound)
-    });
+const bins = Array(numBins).fill(0);
+const binLabels = [];
 
-    // Add median path last
-    datasets.push({
-        label: 'Median ARM Rate',
-        data: medianPath,
-        borderColor: 'rgba(75, 192, 192, 1)',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 1
-    });
+for (let i = 0; i < numBins; i++) {
+const binStart = min + (i * binWidth);
+const binEnd = binStart + binWidth;
+binLabels.push(`$${formatMoney(binStart)}`);
 
-    // Then add the fixed rate reference line
-    datasets.push({
-        label: 'Fixed Mortgage Rate',
-        data: Array(loanTerm).fill(fixedRate),
-        borderColor: 'rgba(255, 99, 132, 1)',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [5, 5],
-        pointRadius: 0
-    });
-    // Add 95% confidence interval band
-    datasets.push({
-        label: '95% Confidence Interval',
-        data: upperPath,
-        borderColor: 'rgba(75, 192, 192, 0.3)',
-        backgroundColor: 'rgba(75, 192, 192, 0.1)',
-        borderWidth: 1,
-        pointRadius: 0,
-        fill: '+1'
-    });
-    
-    // Add median path
-    datasets.push({
-        label: 'Median ARM Rate',
-        data: medianPath,
-        borderColor: 'rgba(75, 192, 192, 1)',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        pointRadius: 1
-    });
-    
-    // Add lower bound of confidence interval
-    datasets.push({
-        label: 'Lower 5%',
-        data: lowerPath,
-        borderColor: 'rgba(75, 192, 192, 0.3)',
-        backgroundColor: 'transparent',
-        borderWidth: 1,
-        pointRadius: 0,
-        fill: false
-    });
-    }
-    
-    // Add fixed rate reference line
-    datasets.push({
-        label: 'Fixed Rate',
-        data: Array(loanTerm).fill(fixedRate),
-        borderColor: 'rgba(255, 99, 132, 1)',
-        backgroundColor: 'transparent',
-        borderWidth: 2,
-        borderDash: [5, 5],
-        pointRadius: 0
-    });
-    
-    // Update rate paths chart
-    ratePathsChart.data.labels = yearLabels;
-    ratePathsChart.data.datasets = datasets;
-    
-    // Update all charts
-    distributionChart.update();
-    savingsChart.update();
-    ratePathsChart.update();
+// Count values in this bin
+for (const cost of armCosts) {
+if (cost >= binStart && (cost < binEnd || (i === numBins - 1 && cost <= binEnd))) {
+bins[i]++;
+}
+}
 }
 
+// Update distribution chart
+distributionChart.data.labels = binLabels;
+distributionChart.data.datasets = [
+{
+label: 'Frequency',
+data: bins,
+backgroundColor: 'rgba(54, 162, 235, 0.5)',
+borderColor: 'rgba(54, 162, 235, 1)',
+borderWidth: 1
+}
+];
+
+// Add reference lines
+distributionChart.options.plugins.annotation = {
+annotations: {
+fixedRateLine: {
+type: 'line',
+yMin: 0,
+yMax: Math.max(...bins),
+xMin: findClosestBinIndex(fixedCost, min, binWidth),
+xMax: findClosestBinIndex(fixedCost, min, binWidth),
+borderColor: 'rgba(255, 99, 132, 1)',
+borderWidth: 2,
+label: {
+    content: 'Fixed Rate',
+    enabled: true,
+    position: 'top'
+}
+},
+medianLine: {
+type: 'line',
+yMin: 0,
+yMax: Math.max(...bins),
+xMin: findClosestBinIndex(armMedian, min, binWidth),
+xMax: findClosestBinIndex(armMedian, min, binWidth),
+borderColor: 'rgba(75, 192, 192, 1)',
+borderWidth: 2,
+label: {
+    content: 'ARM Median',
+    enabled: true,
+    position: 'top'
+}
+}
+}
+};
+
+// 2. Savings/Loss with ARM vs Fixed
+// Calculate savings
+const savings = armCosts.map(cost => fixedCost - cost);
+
+// Create histogram data for savings
+const savingsMin = Math.min(...savings);
+const savingsMax = Math.max(...savings);
+const savingsRange = savingsMax - savingsMin;
+const savingsBinWidth = savingsRange / numBins;
+
+const savingsBins = Array(numBins).fill(0);
+const savingsBinLabels = [];
+
+for (let i = 0; i < numBins; i++) {
+const binStart = savingsMin + (i * savingsBinWidth);
+const binEnd = binStart + savingsBinWidth;
+savingsBinLabels.push(`$${formatMoney(binStart)}`);
+
+// Count values in this bin
+for (const saving of savings) {
+if (saving >= binStart && (saving < binEnd || (i === numBins - 1 && saving <= binEnd))) {
+savingsBins[i]++;
+}
+}
+}
+
+// Update savings chart
+savingsChart.data.labels = savingsBinLabels;
+savingsChart.data.datasets = [
+{
+label: 'Frequency',
+data: savingsBins,
+backgroundColor: 'rgba(75, 192, 192, 0.5)',
+borderColor: 'rgba(75, 192, 192, 1)',
+borderWidth: 1
+}
+];
+
+// Add reference line at zero
+savingsChart.options.plugins.annotation = {
+annotations: {
+zeroLine: {
+type: 'line',
+yMin: 0,
+yMax: Math.max(...savingsBins),
+xMin: findClosestBinIndex(0, savingsMin, savingsBinWidth),
+xMax: findClosestBinIndex(0, savingsMin, savingsBinWidth),
+borderColor: 'rgba(255, 99, 132, 1)',
+borderWidth: 2,
+label: {
+    content: 'Break Even',
+    enabled: true,
+    position: 'top'
+}
+}
+}
+};
+
+// 3. Sample of ARM rate paths
+// Create labels for years
+const yearLabels = [];
+for (let i = 1; i <= loanTerm; i++) {
+// For mobile optimization, use shorter labels
+yearLabels.push(`Y${i}`);
+}
+
+// Add sample rate paths
+const datasets = [];
+
+// Limit number of sample paths to reduce clutter
+const maxSamplePaths = window.innerWidth < 768 ? 2 : 5;
+
+// Add sample paths (fewer on mobile)
+for (let i = 0; i < Math.min(maxSamplePaths, armRatePaths.length); i++) {
+datasets.push({
+label: `Sample Path ${i + 1}`,
+data: armRatePaths[i],
+borderColor: `rgba(54, 162, 235, ${0.3 + (i * 0.1)})`,
+backgroundColor: 'transparent',
+borderWidth: 1,
+pointRadius: 0,
+// Hide sample paths by default on mobile
+hidden: window.innerWidth < 768
+});
+}
+
+// Calculate statistics for rate paths
+if (armRatePaths.length > 0) {
+// Create arrays for each year's statistics
+const medianPath = [];
+const lowerPath = []; // 5th percentile
+const upperPath = []; // 95th percentile
+
+for (let year = 0; year < loanTerm; year++) {
+// Get all rates for this year across all paths
+const ratesForYear = [];
+for (const path of armRatePaths) {
+if (year < path.length) {
+    ratesForYear.push(path[year]);
+}
+}
+
+// Sort rates to calculate percentiles
+ratesForYear.sort((a, b) => a - b);
+
+// Calculate statistics for this year
+const lowerIdx = Math.floor(ratesForYear.length * 0.05);
+const medianIdx = Math.floor(ratesForYear.length * 0.5);
+const upperIdx = Math.floor(ratesForYear.length * 0.95);
+
+lowerPath.push(ratesForYear[lowerIdx] || 0);
+medianPath.push(ratesForYear[medianIdx] || 0);
+upperPath.push(ratesForYear[upperIdx] || 0);
+}
+
+// Add median path - always visible
+datasets.push({
+label: 'Median ARM Rate',
+data: medianPath,
+borderColor: 'rgba(75, 192, 192, 1)',
+backgroundColor: 'transparent',
+borderWidth: 2,
+pointRadius: 1
+});
+
+// Add 95% confidence interval - always visible but simplified
+datasets.push({
+label: '95% Confidence Interval',
+data: upperPath,
+borderColor: 'rgba(75, 192, 192, 0.3)',
+backgroundColor: 'rgba(75, 192, 192, 0.1)',
+borderWidth: 1,
+pointRadius: 0,
+fill: '-1'
+});
+
+// Add lower bound for confidence interval
+// datasets.push({
+// label: 'Lower 5%',
+// data: lowerPath,
+// borderColor: 'rgba(75, 192, 192, 0.3)',
+// backgroundColor: 'transparent',
+// borderWidth: 1,
+// pointRadius: 0,
+// hidden: true
+// });
+}
+
+// Add fixed rate reference line - always visible
+datasets.push({
+label: 'Fixed Rate',
+data: Array(loanTerm).fill(fixedRate),
+borderColor: 'rgba(255, 99, 132, 1)',
+backgroundColor: 'transparent',
+borderWidth: 2,
+borderDash: [5, 5],
+pointRadius: 0
+});
+
+// Update rate paths chart
+ratePathsChart.data.labels = yearLabels;
+ratePathsChart.data.datasets = datasets;
+
+// Update all charts
+distributionChart.update();
+savingsChart.update();
+ratePathsChart.update();
+
+// Handle responsiveness after chart update
+handleChartResponsiveness();
+}
 /**
  * Find the closest bin index for a value
  */
