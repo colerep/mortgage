@@ -105,6 +105,15 @@
         .explanation-text ul {
             padding-left: 1.5rem;
         }
+        /* Navigation styles */
+        .main-nav {
+            margin-bottom: 2rem;
+        }
+        .home-link {
+            display: inline-block;
+            margin-right: 1rem;
+            font-weight: 500;
+        }
         @media (max-width: 768px) {
             .chart-container {
                 height: 250px;
@@ -124,6 +133,13 @@
     </div>
 
     <div class="container">
+        <!-- Main Navigation -->
+        <div class="main-nav mt-3">
+            <a href="index.html" class="home-link text-decoration-none">
+                <i class="bi bi-house-fill"></i> ← Back to Calculator Suite
+            </a>
+        </div>
+        
         <h1 class="text-center my-4">Mortgage Extra Payment vs. Investment Calculator</h1>
         
         <!-- Navigation tabs -->
@@ -264,6 +280,24 @@
                         <p>
                             This tool should be used as one factor in your decision-making process rather than the sole determinant of which strategy to choose.
                         </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Related Calculator -->
+        <div class="mt-5">
+            <h3 class="mb-3">Related Calculator</h3>
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4>5/1 ARM vs Fixed Rate Comparison</h4>
+                            <p>Compare the total cost of a fixed-rate mortgage versus a 5/1 ARM over the full loan term using Monte Carlo simulations based on historical interest rate patterns.</p>
+                        </div>
+                        <div class="col-md-4 text-center text-md-end">
+                            <a href="arm-vs-fixed.html" class="btn btn-primary">Open Calculator</a>
+                        </div>
                     </div>
                 </div>
             </div>

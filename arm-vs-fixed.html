@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mortgage Comparison Tool: 5/1 ARM vs Fixed Rate</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            background-color: #fff;
+        }
+        .card-header {
+            background-color: #f1f8ff;
+            font-weight: 600;
+            border-radius: 10px 10px 0 0 !important;
+        }
+        .btn-primary {
+            background-color: #3772ff;
+            border-color: #3772ff;
+        }
+        .btn-primary:hover {
+            background-color: #2a5cd5;
+            border-color: #2a5cd5;
+        }
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-bottom: 20px;
+        }
+        .results-text {
+            font-size: 16px;
+            line-height: 1.8;
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #3772ff;
+        }
+        .status-message {
+            font-weight: 500;
+            color: #3772ff;
+        }
+        .progress {
+            height: 10px;
+            border-radius: 5px;
+        }
+        .data-source {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 1000;
+            visibility: hidden;
+        }
+        .spinner-border {
+            width: 3rem;
+            height: 3rem;
+        }
+        .nav-tabs .nav-link {
+            color: #3772ff;
+            font-weight: 500;
+        }
+        .nav-tabs .nav-link.active {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        .explanation-text {
+            font-size: 16px;
+            line-height: 1.7;
+        }
+        .explanation-text h2 {
+            font-size: 1.5rem;
+            margin-top: 1.5rem;
+            color: #2c3e50;
+        }
+        .explanation-text ul {
+            padding-left: 1.5rem;
+        }
+        /* Navigation styles */
+        .main-nav {
+            margin-bottom: 2rem;
+        }
+        .home-link {
+            display: inline-block;
+            margin-right: 1rem;
+            font-weight: 500;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary mb-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="status-message" id="simulationStatus">Running simulation...</div>
+        <div class="progress mt-3" style="width: 300px;">
+            <div class="progress-bar" id="simulationProgress" role="progressbar" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Main Navigation -->
+        <div class="main-nav mt-3">
+            <a href="index.html" class="home-link text-decoration-none">
+                <i class="bi bi-house-fill"></i> ← Back to Calculator Suite
+            </a>
+        </div>
+        
+        <h1 class="text-center my-4">Mortgage Comparison Tool: 5/1 ARM vs Fixed Rate</h1>
+        
+        <!-- Navigation tabs -->
+        <ul class="nav nav-tabs mb-4" id="mortgageTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="calculator-tab" data-bs-toggle="tab" data-bs-target="#calculator" type="button" role="tab" aria-controls="calculator" aria-selected="true">Calculator</button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="explanation-tab" data-bs-toggle="tab" data-bs-target="#explanation" type="button" role="tab" aria-controls="explanation" aria-selected="false">How It Works</button>
+            </li>
+        </ul>
+        
+        <!-- Tab content -->
+        <div class="tab-content" id="mortgageTabsContent">
+            <!-- Calculator tab -->
+            <div class="tab-pane fade show active" id="calculator" role="tabpanel" aria-labelledby="calculator-tab">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        Mortgage Parameters
+                    </div>
+                    <div class="card-body">
+                        <form id="mortgageForm">
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label for="loanAmount" class="form-label">Loan Amount ($)</label>
+                                    <input type="number" class="form-control" id="loanAmount" value="300000" min="10000" max="10000000">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="loanTerm" class="form-label">Loan Term (years)</label>
+                                    <input type="number" class="form-control" id="loanTerm" value="30" min="10" max="40">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="fixedRate" class="form-label">Fixed Rate (%)</label>
+                                    <input type="number" class="form-control" id="fixedRate" value="6.75" min="0.1" max="20" step="0.01">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="armRate" class="form-label">5/1 ARM Initial Rate (%)</label>
+                                    <input type="number" class="form-control" id="armRate" value="6.25" min="0.1" max="20" step="0.01">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="armMargin" class="form-label">ARM Margin (%)</label>
+                                    <input type="number" class="form-control" id="armMargin" value="2.75" min="0.1" max="10" step="0.01">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">ARM Rate Caps (Initial/Annual/Lifetime %)</label>
+                                    <div class="input-group">
+                                        <input type="number" class="form-control" id="initialCap" value="2" min="0.1" max="10" step="0.1">
+                                        <span class="input-group-text">/</span>
+                                        <input type="number" class="form-control" id="annualCap" value="2" min="0.1" max="10" step="0.1">
+                                        <span class="input-group-text">/</span>
+                                        <input type="number" class="form-control" id="lifetimeCap" value="5" min="0.1" max="15" step="0.1">
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="numSimulations" class="form-label">Number of Monte Carlo Simulations</label>
+                                    <input type="number" class="form-control" id="numSimulations" value="1000" min="100" max="10000">
+                                </div>
+                                <div class="col-12 text-center mt-4">
+                                    <button type="button" class="btn btn-primary px-4 py-2" id="runSimulation">Run Simulation</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card" id="resultsCard" style="display: none;">
+                    <div class="card-header">
+                        Simulation Results
+                    </div>
+                    <div class="card-body">
+                        <div class="results-text mb-4" id="resultsText"></div>
+                        
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="chart-container">
+                                    <canvas id="distributionChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="savingsChart"></canvas>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="chart-container">
+                                    <canvas id="ratePathsChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="data-source">
+                            <p><strong>Data Source:</strong> Historical data based on 1-year US Treasury Constant Maturity rates (1962-present). The simulation uses this historical data to model potential future interest rate paths.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Explanation tab -->
+            <div class="tab-pane fade" id="explanation" role="tabpanel" aria-labelledby="explanation-tab">
+                <div class="card">
+                    <div class="card-header">
+                        How This Mortgage Comparison Tool Works
+                    </div>
+                    <div class="card-body explanation-text">
+                        <h2>Overview</h2>
+                        <p>This tool runs Monte Carlo simulations to compare the total cost of a fixed-rate mortgage versus a 5/1 ARM (Adjustable Rate Mortgage) over the full loan term. It helps you evaluate which option might be more cost-effective based on historical interest rate patterns.</p>
+
+                        <h2>The Simulation Process</h2>
+                        <ol>
+                            <li><strong>Fixed Rate Calculation</strong>: For the fixed-rate mortgage, we calculate the total cost over the entire loan term using the specified interest rate.</li>
+                            <li><strong>ARM Simulation</strong>: For the 5/1 ARM, we:
+                                <ul>
+                                    <li>Keep the initial rate fixed for the first 5 years</li>
+                                    <li>Simulate thousands of possible interest rate paths for the remaining years</li>
+                                    <li>Apply the specified ARM adjustment caps (initial, annual, and lifetime)</li>
+                                    <li>Calculate the total cost for each simulated scenario</li>
+                                </ul>
+                            </li>
+                            <li><strong>Statistical Analysis</strong>: The tool analyzes the distribution of ARM costs compared to the fixed-rate option to determine:
+                                <ul>
+                                    <li>The median expected cost of the ARM</li>
+                                    <li>The probability that the ARM will be cheaper than the fixed rate</li>
+                                    <li>The potential savings (or additional cost) of choosing the ARM</li>
+                                </ul>
+                            </li>
+                        </ol>
+
+                        <h2>Key Assumptions</h2>
+                        <ol>
+                            <li><strong>Interest Rate Model</strong>: Future interest rates are simulated by sampling directly from historical 1-year US Treasury rates (1962-present), which serve as the index for ARM rate adjustments.</li>
+                            <li><strong>Rate Adjustments</strong>: After the fixed period, the ARM rate is calculated as:
+                                <ul>
+                                    <li>Index rate (1-year Treasury) + Margin</li>
+                                    <li>Subject to the specified adjustment caps</li>
+                                </ul>
+                            </li>
+                            <li><strong>No Prepayments</strong>: The simulation assumes you hold the mortgage for the full term with standard monthly payments.</li>
+                            <li><strong>No Refinancing</strong>: The model does not account for potential refinancing opportunities.</li>
+                            <li><strong>Consistent Payment Recalculation</strong>: ARM payments are recalculated annually after the initial fixed period.</li>
+                        </ol>
+
+                        <h2>Interpreting the Results</h2>
+                        <ul>
+                            <li><strong>Distribution Chart</strong>: Shows the range of possible total costs for the ARM across all simulations.</li>
+                            <li><strong>Savings Chart</strong>: Illustrates the potential savings (or additional cost) of choosing the ARM over the fixed-rate option.</li>
+                            <li><strong>Rate Paths Chart</strong>: Displays sample projected interest rate paths, including the median scenario and 95% confidence interval.</li>
+                            <li><strong>Summary Statistics</strong>: Provides the median ARM cost, expected savings, and probability of the ARM being less expensive than the fixed-rate option.</li>
+                        </ul>
+
+                        <h2>Limitations</h2>
+                        <p>
+                            Past rate behavior may not predict future rates.
+                            The tool does not account for individual factors like how long you plan to stay in the home.
+                            Economic interventions (like those during 2008-2020) can create unusual rate environments.
+                        </p>
+                        <p>
+                            This tool should be used as one factor in your decision-making process rather than the sole determinant of which mortgage type to choose.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Related Calculator -->
+        <div class="mt-5">
+            <h3 class="mb-3">Related Calculator</h3>
+            <div class="card">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4>Mortgage Extra Payment vs. Investment Calculator</h4>
+                            <p>Compare paying extra on your mortgage versus investing that money in the stock market. See which strategy builds more wealth using historical market return data.</p>
+                        </div>
+                        <div class="col-md-4 text-center text-md-end">
+                            <a href="mortgage-vs-invest.html" class="btn btn-primary">Open Calculator</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="historical-data.js"></script>
+    <script src="mortgage-simulation-v2.js"></script>
+</body>
+</html>
